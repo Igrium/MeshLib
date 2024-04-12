@@ -1,6 +1,8 @@
 package com.igrium.meshlib.math;
 
-public record Vector2(float x, float y) {
+import de.javagl.obj.FloatTuple;
+
+public record Vector2(float x, float y) implements FloatTuple {
     public static final Vector2 ZERO = new Vector2(0, 0);
 
     public Vector2 add(float x, float y) {
@@ -78,5 +80,40 @@ public record Vector2(float x, float y) {
     @Override
     public final String toString() {
         return "(%f, %f)".formatted(x, y);
+    }
+
+    @Override
+    public float getX() {
+        return x;
+    }
+
+    @Override
+    public float getY() {
+        return y;
+    }
+
+    @Override
+    public float getZ() {
+        throw new IndexOutOfBoundsException();
+    }
+
+    @Override
+    public float getW() {
+        throw new IndexOutOfBoundsException();
+    }
+
+    @Override
+    public float get(int index) {
+        if (index == 0)
+            return x;
+        else if (index == 1)
+            return y;
+        else
+            throw new IndexOutOfBoundsException(index);
+    }
+
+    @Override
+    public int getDimensions() {
+        return 2;
     }
 }

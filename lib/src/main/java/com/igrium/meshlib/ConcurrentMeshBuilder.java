@@ -1,11 +1,20 @@
 package com.igrium.meshlib;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import com.igrium.meshlib.math.Vector2;
 import com.igrium.meshlib.math.Vector3;
+import com.igrium.meshlib.util.IndexedSet;
+
+import de.javagl.obj.Obj;
+import de.javagl.obj.ObjFaces;
+import de.javagl.obj.Objs;
 
 /**
  * A framework to build a mesh across multiple threads, re-using vertices when
@@ -15,6 +24,8 @@ import com.igrium.meshlib.math.Vector3;
  */
 public class ConcurrentMeshBuilder {
 
+    private final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
+
     private final Map<Vector3, Vertex> vertices = new ConcurrentHashMap<>();
 
     public Vertex getVertex(Vector3 pos) {
@@ -22,7 +33,12 @@ public class ConcurrentMeshBuilder {
     }
 
     public Vertex getOrCreateVertex(Vector3 pos) {
-        return vertices.computeIfAbsent(pos, vec -> new Vertex(vec));
+        try {
+            readWriteLock.readLock().lock();
+            return vertices.computeIfAbsent(pos, vec -> new Vertex(vec));
+        } finally {
+            readWriteLock.readLock().unlock();
+        }
     }
 
     public Vertex getOrCreate(Vector3 pos, Vector3 color) {
@@ -55,4 +71,83 @@ public class ConcurrentMeshBuilder {
         return faces;
     }
     
+    /**
+     * Create an OBJ from this mesh builder.
+     * @param executor Executor to use for various parallel tasks.
+     * @return The generated OBJ.
+     */
+    public Obj toObj() {
+        Obj obj = Objs.create();
+        final IndexedSet<Vertex> vertices = new IndexedSet<>();
+        final IndexedSet<Vector2> texCoords = new IndexedSet<>();
+        final IndexedSet<Vector3> normals = new IndexedSet<>();
+        
+        // Add faces
+        getFaces().stream().sorted(ConcurrentMeshBuilder::compareFaces).forEach(face -> {
+            int[] vertexIndices = new int[face.numSides()];
+            int[] texCoordIndices = null;
+            int[] normalIndices = null;
+            
+            int i = 0;
+            for (var vertex : face.getVertices()) {
+                int index = vertices.addIfAbsent(vertex);
+                vertexIndices[i] = index;
+                i++;
+            }
+
+            i = 0;
+            if (face.hasTexCoords()) {
+                texCoordIndices = new int[face.numSides()];
+                for (var texCoord : face.getTexCoords()) {
+                    int index = texCoords.addIfAbsent(texCoord);
+                    texCoordIndices[i] = index;
+                    i++;
+                }
+            }
+            
+
+            i = 0;
+            if (face.hasNormals()) {
+                normalIndices = new int[face.numSides()];
+                for (var normal : face.getNormals()) {
+                    int index = normals.addIfAbsent(normal);
+                    normalIndices[i] = index;
+                    i++;
+                }
+            }
+
+            String material = face.getMaterial();
+            obj.setActiveMaterialGroupName(material != null ? material : "");
+
+            Collection<String> groups = face.getGroups();
+            obj.setActiveGroupNames(groups != null ? groups : Collections.emptyList());
+
+            obj.addFace(ObjFaces.create(vertexIndices, texCoordIndices, normalIndices));
+        });
+
+        // Add vertices, texCoords, and normals
+        for (Vertex vertex : vertices) {
+            obj.addVertex(vertex.pos());
+        }
+
+        for (Vector2 texCoord : texCoords) {
+            obj.addTexCoord(texCoord);
+        }
+
+        for (Vector3 normal : normals) {
+            obj.addNormal(normal);
+        }
+
+
+        return obj;
+    }
+
+
+    private static int compareFaces(Face face1, Face face2) {
+        if (face1.getMaterial().equals(face2.getMaterial())) {
+            return face1.hashGroups() - face2.hashGroups();
+        } else {
+            return (face1.getMaterial().hashCode() - face2.getMaterial().hashCode()) * 100;
+        }
+    }
 }

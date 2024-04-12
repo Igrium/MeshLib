@@ -16,6 +16,8 @@ repositories {
 }
 
 dependencies {
+    api 'de.javagl:obj:0.4.0'
+
     // Use JUnit Jupiter for testing.
     testImplementation libs.junit.jupiter
 
