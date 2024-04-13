@@ -11,5 +11,5 @@ plugins {
 }
 
 rootProject.name = 'meshlib'
-include('lib')
+include('meshlib')
 include('testapp')
