@@ -16,10 +16,18 @@ import de.javagl.obj.ObjFaces;
 import de.javagl.obj.Objs;
 
 /**
+ * <p>
  * A framework to build a mesh across multiple threads, re-using vertices when
  * possible. This class contains a registry of "tracked" vertices. Faces do
  * <em>not</em> need to use tracked vertices exclusively, however it will
  * improve file size to do so.
+ * </p>
+ * <p>
+ * The implementation is designed to "build" the mesh as fast as possible when
+ * using multiple threads. However, this comes at a cost of a greater
+ * "compilation" time on a single thread before it can be saved to a file.
+ * </p>
+ * 
  */
 public class ConcurrentMesh {
 
