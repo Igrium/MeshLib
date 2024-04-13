@@ -11,5 +11,6 @@ plugins {
 }
 
 rootProject.name = 'meshlib'
-include('meshlib')
-include('testapp')
+include 'meshlib'
+if (!System.env.JITPACK)
+    include ':testapp'
