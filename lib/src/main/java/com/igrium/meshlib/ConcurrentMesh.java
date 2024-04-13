@@ -6,8 +6,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import com.igrium.meshlib.math.Vector2;
 import com.igrium.meshlib.math.Vector3;
@@ -25,8 +23,6 @@ import de.javagl.obj.Objs;
  */
 public class ConcurrentMesh {
 
-    private final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
-
     private final Map<Vector3, Vertex> vertices = new ConcurrentHashMap<>();
 
     public Vertex getVert(Vector3 pos) {
@@ -34,22 +30,11 @@ public class ConcurrentMesh {
     }
 
     public Vertex putVert(Vector3 pos) {
-        try {
-            readWriteLock.readLock().lock();
-            return vertices.computeIfAbsent(pos, vec -> new Vertex(vec));
-        } finally {
-            readWriteLock.readLock().unlock();
-        }
+        return vertices.computeIfAbsent(pos, vec -> new Vertex(vec));
     }
 
     public Vertex putVert(Vector3 pos, Vector3 color) {
-        try {
-            readWriteLock.readLock().lock();
-            return vertices.computeIfAbsent(pos, vec -> new Vertex(vec, color));
-        } finally {
-            readWriteLock.readLock().unlock();
-        }
-        
+        return vertices.computeIfAbsent(pos, vec -> new Vertex(vec, color));
     }
 
     public final Vertex putVert(float x, float y, float z) {
@@ -57,12 +42,7 @@ public class ConcurrentMesh {
     }
 
     public void putVertex(Vertex vertex) {
-        try {
-            readWriteLock.readLock().lock();
-            vertices.put(vertex.pos(), vertex);
-        } finally {
-            readWriteLock.readLock().unlock();
-        }
+        vertices.put(vertex.pos(), vertex);
     }
 
     public Map<Vector3, Vertex> getVertices() {
@@ -72,21 +52,11 @@ public class ConcurrentMesh {
     private final Set<Face> faces = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     public void putFace(Face face) {
-        readWriteLock.readLock().lock();
-        try {
-            this.faces.add(face);
-        } finally {
-            readWriteLock.readLock().unlock();
-        }
+        this.faces.add(face);
     }
 
     public boolean removeFace(Face face) {
-        readWriteLock.readLock().lock();
-        try {
-            return faces.remove(face);
-        } finally {
-            readWriteLock.readLock().unlock();
-        }
+        return faces.remove(face);
     }
 
     public Set<Face> getFaces() {
@@ -98,72 +68,67 @@ public class ConcurrentMesh {
      * @return The generated OBJ.
      */
     public Obj toObj() {
-        readWriteLock.writeLock().lock();
-        try {
-            Obj obj = Objs.create();
-            final IndexedSet<Vertex> vertices = new IndexedSet<>();
-            final IndexedSet<Vector2> texCoords = new IndexedSet<>();
-            final IndexedSet<Vector3> normals = new IndexedSet<>();
+        Obj obj = Objs.create();
+        final IndexedSet<Vertex> vertices = new IndexedSet<>();
+        final IndexedSet<Vector2> texCoords = new IndexedSet<>();
+        final IndexedSet<Vector3> normals = new IndexedSet<>();
 
-            // Add faces
-            getFaces().stream().sorted(ConcurrentMesh::compareFaces).forEach(face -> {
-                int[] vertexIndices = new int[face.numSides()];
-                int[] texCoordIndices = null;
-                int[] normalIndices = null;
+        // Add faces
+        getFaces().stream().sorted(ConcurrentMesh::compareFaces).forEach(face -> {
+            int[] vertexIndices = new int[face.numSides()];
+            int[] texCoordIndices = null;
+            int[] normalIndices = null;
 
-                int i = 0;
-                for (var vertex : face.getVertices()) {
-                    int index = vertices.addIfAbsent(vertex);
-                    vertexIndices[i] = index;
+            int i = 0;
+            for (var vertex : face.getVertices()) {
+                int index = vertices.addIfAbsent(vertex);
+                vertexIndices[i] = index;
+                i++;
+            }
+
+            i = 0;
+            if (face.hasTexCoords()) {
+                texCoordIndices = new int[face.numSides()];
+                for (var texCoord : face.getTexCoords()) {
+                    int index = texCoords.addIfAbsent(texCoord);
+                    texCoordIndices[i] = index;
                     i++;
                 }
+            }
 
-                i = 0;
-                if (face.hasTexCoords()) {
-                    texCoordIndices = new int[face.numSides()];
-                    for (var texCoord : face.getTexCoords()) {
-                        int index = texCoords.addIfAbsent(texCoord);
-                        texCoordIndices[i] = index;
-                        i++;
-                    }
+            i = 0;
+            if (face.hasNormals()) {
+                normalIndices = new int[face.numSides()];
+                for (var normal : face.getNormals()) {
+                    int index = normals.addIfAbsent(normal);
+                    normalIndices[i] = index;
+                    i++;
                 }
-
-                i = 0;
-                if (face.hasNormals()) {
-                    normalIndices = new int[face.numSides()];
-                    for (var normal : face.getNormals()) {
-                        int index = normals.addIfAbsent(normal);
-                        normalIndices[i] = index;
-                        i++;
-                    }
-                }
-
-                String material = face.getMaterial();
-                obj.setActiveMaterialGroupName(material != null ? material : "");
-
-                Collection<String> groups = face.getGroups();
-                obj.setActiveGroupNames(groups != null ? groups : Collections.emptyList());
-
-                obj.addFace(ObjFaces.create(vertexIndices, texCoordIndices, normalIndices));
-            });
-
-            // Add vertices, texCoords, and normals
-            for (Vertex vertex : vertices) {
-                obj.addVertex(vertex);
             }
 
-            for (Vector2 texCoord : texCoords) {
-                obj.addTexCoord(texCoord);
-            }
+            String material = face.getMaterial();
+            obj.setActiveMaterialGroupName(material != null ? material : "");
 
-            for (Vector3 normal : normals) {
-                obj.addNormal(normal);
-            }
+            Collection<String> groups = face.getGroups();
+            obj.setActiveGroupNames(groups != null ? groups : Collections.emptyList());
 
-            return obj;
-        } finally {
-            readWriteLock.writeLock().unlock();
+            obj.addFace(ObjFaces.create(vertexIndices, texCoordIndices, normalIndices));
+        });
+
+        // Add vertices, texCoords, and normals
+        for (Vertex vertex : vertices) {
+            obj.addVertex(vertex);
         }
+
+        for (Vector2 texCoord : texCoords) {
+            obj.addTexCoord(texCoord);
+        }
+
+        for (Vector3 normal : normals) {
+            obj.addNormal(normal);
+        }
+
+        return obj;
     }
 
 
