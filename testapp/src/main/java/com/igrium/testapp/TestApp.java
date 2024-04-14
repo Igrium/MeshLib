@@ -7,8 +7,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
-import com.igrium.meshlib.ConcurrentMesh;
+import com.igrium.meshlib.AbstractConcurrentMesh;
 import com.igrium.meshlib.Face;
+import com.igrium.meshlib.OverlapCheckingMesh;
 import com.igrium.meshlib.Vertex;
 import com.igrium.meshlib.math.Vector2;
 import com.igrium.meshlib.math.Vector3;
@@ -18,7 +19,9 @@ import de.javagl.obj.ObjWriter;
 
 public class TestApp {
     public static void main(String[] args) throws Exception {
-        ConcurrentMesh mesh = new ConcurrentMesh();
+        long startTime = System.currentTimeMillis();
+
+        AbstractConcurrentMesh mesh = new OverlapCheckingMesh();
 
         List<CompletableFuture<Void>> futures = new ArrayList<>();
 
@@ -34,19 +37,23 @@ public class TestApp {
         
         Obj obj = mesh.toObj();
 
+        System.out.println("Compiled mesh in " + (System.currentTimeMillis() - startTime) + " ms");
+
         try (BufferedWriter writer = Files.newBufferedWriter(Paths.get("file.obj"))) {
             ObjWriter.write(obj, writer);
         }
+
+        System.out.print("Wrote to file.obj");
     }
 
-    private static CompletableFuture<Void> makeFuture(ConcurrentMesh mesh, float x, float y, float z) {
+    private static CompletableFuture<Void> makeFuture(AbstractConcurrentMesh mesh, float x, float y, float z) {
         return CompletableFuture.runAsync(() -> {
             makeCube(mesh, x, y, z);
         });
     }
 
     // I didn't finish this. I don't care.
-    public static void makeCube(ConcurrentMesh mesh, float x, float y, float z) {
+    public static void makeCube(AbstractConcurrentMesh mesh, float x, float y, float z) {
         float maxX = x + 1;
         float maxY = y + 1;
         float maxZ = z + 1;
@@ -66,7 +73,7 @@ public class TestApp {
         };
 
         Face face1 = Face.create(face1Verts, face1TexCoord, null, null, null);
-        mesh.putFace(face1);
+        mesh.addFace(face1);
 
         Vertex[] face2Verts = new Vertex[] {
             mesh.putVert(x, y, z),
@@ -83,7 +90,7 @@ public class TestApp {
         };
 
         Face face2 = Face.create(face2Verts, null, null, null, null);
-        mesh.putFace(face2);
+        mesh.addFace(face2);
 
         Vertex[] face3Verts = new Vertex[] {
             mesh.putVert(x, y, z),
@@ -93,7 +100,7 @@ public class TestApp {
         };
 
         Face face3 = Face.create(face3Verts, null, face2Normals, null, null);
-        mesh.putFace(face3);
+        mesh.addFace(face3);
         
         Vertex[] face4Verts = new Vertex[] {
             mesh.putVert(maxX, y, z),
@@ -103,7 +110,7 @@ public class TestApp {
         };
 
         Face face4 = Face.create(face4Verts, null, null, null, null);
-        mesh.putFace(face4);
+        mesh.addFace(face4);
     }
 
 }

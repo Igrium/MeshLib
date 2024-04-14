@@ -66,6 +66,13 @@ public final class Face {
         return Arrays.equals(this.vertices, vertices);
     }
 
+    /**
+     * Internal use only
+     */
+    Vertex[] getVertexArray() {
+        return vertices;
+    }
+
     public boolean hasTexCoords() {
         return texCoords != null;
     }
