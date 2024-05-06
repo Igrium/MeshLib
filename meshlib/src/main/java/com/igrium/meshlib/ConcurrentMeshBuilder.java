@@ -62,6 +62,16 @@ public abstract class ConcurrentMeshBuilder {
         return lock;
     }
 
+    boolean prioritizeNewFaces = true;
+
+    public void setPrioritizeNewFaces(boolean prioritizeNewFaces) {
+        this.prioritizeNewFaces = prioritizeNewFaces;
+    }
+
+    public boolean getPrioritizeNewFaces() {
+        return prioritizeNewFaces;
+    }
+
     public class ReferenceMap<T> {
         // Not all values must be in this set.
         private final Map<T, IndexedReference<T>> set = new ConcurrentHashMap<>();
@@ -118,21 +128,6 @@ public abstract class ConcurrentMeshBuilder {
     public ReferenceMap<Vector3> getNormals() {
         return normals;
     }
-
-    // private final Collection<Face> faces = new ConcurrentLinkedQueue<>();
-
-    // public Collection<Face> getFaces() {
-    //     return Collections.unmodifiableCollection(faces);
-    // }
-
-    // public void putFace(Face face) {
-    //     lock.readLock().lock();
-    //     try {
-    //         faces.add(face);
-    //     } finally {
-    //         lock.readLock().unlock();
-    //     }
-    // }
 
     public abstract Collection<Face> getFaces();
 
@@ -232,7 +227,7 @@ public abstract class ConcurrentMeshBuilder {
 
         @Override
         public void putFace(Face face) {
-            putFace(face, true);
+            putFace(face, prioritizeNewFaces);
         }
     }
 }

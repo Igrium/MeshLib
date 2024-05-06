@@ -11,7 +11,6 @@ import com.igrium.meshlib.ConcurrentMeshBuilder;
 import com.igrium.meshlib.FaceBuilder;
 import com.igrium.meshlib.Vertex;
 import com.igrium.meshlib.math.Vector2;
-import com.igrium.meshlib.math.Vector3;
 
 import de.javagl.obj.Obj;
 import de.javagl.obj.ObjWriter;
@@ -47,34 +46,6 @@ public class TestApp {
         System.out.print("wrote to file.obj");
     }
 
-    // public static void main(String[] args) throws Exception {
-    //     long startTime = System.currentTimeMillis();
-
-    //     AbstractConcurrentMesh mesh = new OverlapCheckingMesh();
-
-    //     List<CompletableFuture<Void>> futures = new ArrayList<>();
-
-    //     for (int x = 0; x < 100; x++) {
-    //         for (int y = 0; y < 100; y++) {
-    //             for (int z = 0; z < 10; z++) {
-    //                 futures.add(makeFuture(mesh, x, y, z));
-    //             }
-    //         }
-    //     }
-
-    //     CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
-        
-    //     Obj obj = mesh.toObj();
-
-    //     System.out.println("Compiled mesh in " + (System.currentTimeMillis() - startTime) + " ms");
-
-    //     try (BufferedWriter writer = Files.newBufferedWriter(Paths.get("file.obj"))) {
-    //         ObjWriter.write(obj, writer);
-    //     }
-
-    //     System.out.print("Wrote to file.obj");
-    // }
-
     private static CompletableFuture<Void> makeFuture(ConcurrentMeshBuilder mesh, float x, float y, float z) {
         return CompletableFuture.runAsync(() -> {
             makeCube(mesh, x, y, z);
@@ -98,7 +69,7 @@ public class TestApp {
             new Vertex(x, y, z),
             new Vertex(maxX, y, z),
             new Vertex(maxX, y, maxZ),
-            new Vertex(new Vector3(x, y, maxZ), new Vector3(1, 0, 0))
+            new Vertex(x, y, maxZ)
         };
 
         new FaceBuilder(face1Verts).texCoords(sharedTexCoord).build(mesh);
