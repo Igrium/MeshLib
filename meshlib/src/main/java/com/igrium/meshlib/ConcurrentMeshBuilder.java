@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -12,13 +13,54 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import com.igrium.meshlib.math.Vector2;
 import com.igrium.meshlib.math.Vector3;
+import com.igrium.meshlib.util.ArrayUtils;
 
 import de.javagl.obj.Obj;
 import de.javagl.obj.Objs;
 
-public class ConcurrentMeshBuilder {
+public abstract class ConcurrentMeshBuilder {
 
-    private final ReadWriteLock lock = new ReentrantReadWriteLock();
+    public static ConcurrentMeshBuilder create(boolean overlapChecking) {
+        return overlapChecking ? new OverlapCheckingMeshBuilder() : new SimpleConcurrentMeshBuilder();
+    }
+
+    public static ConcurrentMeshBuilder create() {
+        return new SimpleConcurrentMeshBuilder();
+    }
+    
+    private static class UnorderedArrayHandle<T> {
+        final T[] array;
+
+        UnorderedArrayHandle(T[] array) {
+            this.array = array;
+        }
+
+        @Override
+        public int hashCode() {
+            // Using strait addition utilizes the commutative property to ensure hash code
+            // is order-independent.
+            int code = 0;
+            for (T val : array) {
+                code += val.hashCode();
+            }
+            return code;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof UnorderedArrayHandle other) {
+                return ArrayUtils.arrayEqualsUnordered(this.array, other.array);
+            } else {
+                return false;
+            }
+        }
+    }
+
+    final ReadWriteLock lock = new ReentrantReadWriteLock();
+
+    protected ReadWriteLock getLock() {
+        return lock;
+    }
 
     public class ReferenceMap<T> {
         // Not all values must be in this set.
@@ -77,20 +119,24 @@ public class ConcurrentMeshBuilder {
         return normals;
     }
 
-    private final Collection<Face> faces = new ConcurrentLinkedQueue<>();
+    // private final Collection<Face> faces = new ConcurrentLinkedQueue<>();
 
-    public Collection<Face> getFaces() {
-        return Collections.unmodifiableCollection(faces);
-    }
+    // public Collection<Face> getFaces() {
+    //     return Collections.unmodifiableCollection(faces);
+    // }
 
-    public void putFace(Face face) {
-        lock.readLock().lock();
-        try {
-            faces.add(face);
-        } finally {
-            lock.readLock().unlock();
-        }
-    }
+    // public void putFace(Face face) {
+    //     lock.readLock().lock();
+    //     try {
+    //         faces.add(face);
+    //     } finally {
+    //         lock.readLock().unlock();
+    //     }
+    // }
+
+    public abstract Collection<Face> getFaces();
+
+    public abstract void putFace(Face face);
 
     public Obj toObj() {
         Obj obj = Objs.create();
@@ -109,7 +155,7 @@ public class ConcurrentMeshBuilder {
                 obj.addNormal(ref.value());
             }
 
-            for (Face face : faces) {
+            for (Face face : getFaces()) {
                 obj.setActiveGroupNames(face.getGroups());
                 obj.setActiveMaterialGroupName(face.getMaterial());
 
@@ -146,6 +192,47 @@ public class ConcurrentMeshBuilder {
             return obj;
         } finally {
             lock.writeLock().unlock();
+        }
+    }
+
+    private static class SimpleConcurrentMeshBuilder extends ConcurrentMeshBuilder {
+        private final Queue<Face> faces = new ConcurrentLinkedQueue<>();
+
+        @Override
+        public Collection<Face> getFaces() {
+            return Collections.unmodifiableCollection(faces);
+        }
+
+        @Override
+        public void putFace(Face face) {
+            lock.readLock().lock();
+            try {
+                faces.add(face);
+            } finally {
+                lock.readLock().unlock();
+            }
+        }
+    }
+
+    private static class OverlapCheckingMeshBuilder extends ConcurrentMeshBuilder {
+        private final Map<UnorderedArrayHandle<IndexedReference<Vertex>>, Face> faces = new ConcurrentHashMap<>();
+
+        @Override
+        public Collection<Face> getFaces() {
+            return Collections.unmodifiableCollection(faces.values());
+        }
+
+        public void putFace(Face face, boolean override) {
+            if (override) {
+                faces.put(new UnorderedArrayHandle<>(face.getVertices()), face);
+            } else {
+                faces.putIfAbsent(new UnorderedArrayHandle<>(face.getVertices()), face);
+            }
+        }
+
+        @Override
+        public void putFace(Face face) {
+            putFace(face, true);
         }
     }
 }

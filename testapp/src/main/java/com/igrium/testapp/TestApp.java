@@ -20,12 +20,12 @@ public class TestApp {
     public static void main(String[] args) throws Exception {
         System.out.println("Starting build process");
         long startTime = System.currentTimeMillis();
-        ConcurrentMeshBuilder mesh = new ConcurrentMeshBuilder();
+        ConcurrentMeshBuilder mesh = ConcurrentMeshBuilder.create(true);
         List<CompletableFuture<?>> futures = new ArrayList<>();
 
         for (int x = 0; x < 100; x++) {
             for (int y = 0; y < 100; y++) {
-                for (int z = 0; z < 100; z++) {
+                for (int z = 0; z < 10; z++) {
                     futures.add(makeFuture(mesh, x, y, z));
                 }
             }
