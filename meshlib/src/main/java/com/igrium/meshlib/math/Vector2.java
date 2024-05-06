@@ -2,9 +2,12 @@ package com.igrium.meshlib.math;
 
 import de.javagl.obj.FloatTuple;
 
+/**
+ * An immutable two-dimensional float vector.
+ */
 public record Vector2(float x, float y) implements FloatTuple {
     public static final Vector2 ZERO = new Vector2(0, 0);
-
+    
     public Vector2 add(float x, float y) {
         return new Vector2(this.x + x, this.y + y);
     }

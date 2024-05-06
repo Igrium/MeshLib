@@ -4,6 +4,11 @@ import com.igrium.meshlib.math.Vector3;
 
 import de.javagl.obj.FloatTuple;
 
+/**
+ * A vertex within the obj.
+ * @param pos The position in 3D space.
+ * @param color The vertex color. Used by Blender's OBJ parser.
+ */
 public record Vertex(Vector3 pos, Vector3 color) implements FloatTuple {
     public Vertex(Vector3 pos) {
         this(pos, new Vector3(1, 1, 1));

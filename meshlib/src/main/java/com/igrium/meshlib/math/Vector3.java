@@ -2,6 +2,9 @@ package com.igrium.meshlib.math;
 
 import de.javagl.obj.FloatTuple;
 
+/**
+ * An immutable three-dimensional float vector.
+ */
 public record Vector3(float x, float y, float z) implements FloatTuple {
     public static final Vector3 ZERO = new Vector3(0, 0, 0);
 

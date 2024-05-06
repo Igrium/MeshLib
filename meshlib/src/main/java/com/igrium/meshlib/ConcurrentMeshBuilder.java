@@ -18,12 +18,54 @@ import com.igrium.meshlib.util.ArrayUtils;
 import de.javagl.obj.Obj;
 import de.javagl.obj.Objs;
 
+/**
+ * <p>
+ * Designed to build a large, complex mesh across multiple threads. The mesh
+ * creation process takes place in two stages:
+ * </p>
+ * <ol>
+ * <li>The build stage works across many threads and works to assemble large
+ * amounts of vertices and faces.</li>
+ * <li>The compile stage works on one thread, and compiles the mesh data into a
+ * <code>Obj</code>.</li>
+ * </ol>
+ * <p>
+ * All methods in this class are thread-safe. However, if this mesh is running
+ * the compile stage on any thread (<code>toObj()</code>), every other access
+ * will be blocked until the compile is complete.
+ * </p>
+ * <p>
+ * Due to the way that index tracking is implemented, manipulation of indexed
+ * elements after they've been added to the mesh is unsupported. It is also not
+ * recommended to try and load an existing <code>Obj</code> into a
+ * <code>ConcurrentMeshBuilder</code>.
+ * </p>
+ * <p>
+ * Concurrent meshes also support "overlap checking". If enabled, every attempt
+ * to add a face will first check that there are no existing faces using the
+ * same vertex set. This way, weirdly-implemented mesh suppliers don't create
+ * invalid mesh data.
+ * </p>
+ */
 public abstract class ConcurrentMeshBuilder {
 
+    /**
+     * Create a concurrent mesh builder.
+     * 
+     * @param overlapChecking If <code>true</code>, the builder will ensure that no
+     *                        two faces share the same vertex set, reducing the risk
+     *                        of weirdly-implemented mesh suppliers creating invalid
+     *                        mesh data.
+     * @return The new mesh builder.
+     */
     public static ConcurrentMeshBuilder create(boolean overlapChecking) {
         return overlapChecking ? new OverlapCheckingMeshBuilder() : new SimpleConcurrentMeshBuilder();
     }
 
+    /**
+     * Create a concurrent mesh builder without overlap checking.
+     * @return The new mesh builder.
+     */
     public static ConcurrentMeshBuilder create() {
         return new SimpleConcurrentMeshBuilder();
     }
@@ -58,20 +100,39 @@ public abstract class ConcurrentMeshBuilder {
 
     final ReadWriteLock lock = new ReentrantReadWriteLock();
 
+    /**
+     * Get the read-write lock that this concurrent mesh uses. The compile stage
+     * (<code>toObj()</code>) locks the write lock. Everything else should lock the
+     * read lock.
+     * 
+     * @return The read-write lock.
+     */
     protected ReadWriteLock getLock() {
         return lock;
     }
 
     boolean prioritizeNewFaces = true;
 
+    /**
+     * If overlap checking is enabled, whether new faces should override old faces.
+     */
     public void setPrioritizeNewFaces(boolean prioritizeNewFaces) {
         this.prioritizeNewFaces = prioritizeNewFaces;
     }
 
-    public boolean getPrioritizeNewFaces() {
+    
+    /**
+     * If overlap checking is enabled, whether new faces should override old faces.
+     */
+    public boolean prioritizeNewFaces() {
         return prioritizeNewFaces;
     }
 
+    /**
+     * A map of references pointing to indexed values within the mesh (vertices,
+     * texcoords, or normals). Like the parent mesh, all methods here are
+     * thread-safe.
+     */
     public class ReferenceMap<T> {
         // Not all values must be in this set.
         private final Map<T, IndexedReference<T>> set = new ConcurrentHashMap<>();
@@ -79,6 +140,13 @@ public abstract class ConcurrentMeshBuilder {
 
         private ReferenceMap() {};
 
+        /**
+         * Find the indexed reference pointing to a specific value and create it if it
+         * does not exist.
+         * 
+         * @param value The value.
+         * @return The indexed reference.
+         */
         public IndexedReference<T> getOrAdd(T value) {
             lock.readLock().lock();
             try {
@@ -95,6 +163,13 @@ public abstract class ConcurrentMeshBuilder {
             }
         }
 
+        /**
+         * Add an indexed reference pointing to a value,
+         * regardless if one already eists.
+         * 
+         * @param value The value.
+         * @return The indexed reference.
+         */
         public IndexedReference<T> add(T value) {
             lock.readLock().lock();
             try {
@@ -117,22 +192,61 @@ public abstract class ConcurrentMeshBuilder {
     private final ReferenceMap<Vector2> texCoords = new ReferenceMap<>();
     private final ReferenceMap<Vector3> normals = new ReferenceMap<>();
 
+    /**
+     * Get the mesh's vertices.
+     * @return A mutable reference map of vertices.
+     */
     public ReferenceMap<Vertex> getVertices() {
         return vertices;
     }
 
+    /**
+     * Get the mesh's texture coordinates.
+     * @return A mutable reference map of texture coordinates.
+     */
     public ReferenceMap<Vector2> getTexCoords() {
         return texCoords;
     }
 
+    /**
+     * Get the mesh's normals.
+     * @return A mutable reference map of normals.
+     */
     public ReferenceMap<Vector3> getNormals() {
         return normals;
     }
 
+    /**
+     * Get all of the faces in this mesh.
+     * @return An unmodifiable collection of all the mesh's faces.
+     */
     public abstract Collection<Face> getFaces();
 
-    public abstract void putFace(Face face);
+    /**
+     * Add a face to this mesh. If overlap checking is enabled, the face will be
+     * matched against existing faces first.
+     * 
+     * @param face Face to add.
+     * @return The face that ended up in the mesh. If overlap checking is enabled
+     *         and the supplied face conflicts with an existing face, will return
+     *         either the supplied face or the existing face based on
+     *         <code>prioritizeNewFaces()</code>
+     */
+    public abstract Face putFace(Face face);
 
+    /**
+     * Check if this mesh has overlap checking enabled.
+     * @return If overlap checking is enabled.
+     */
+    public abstract boolean isOverlapChecking();
+
+    /**
+     * Compile this mesh builder into an <code>Obj</code>. Depending on the
+     * complexity of the mesh, this method could take quite some time. Additionally,
+     * all other methods in the mesh builder will block until it returns.
+     * 
+     * @return The compiled <code>Obj</code>
+     */
     public Obj toObj() {
         Obj obj = Objs.create();
         lock.writeLock().lock();
@@ -199,13 +313,19 @@ public abstract class ConcurrentMeshBuilder {
         }
 
         @Override
-        public void putFace(Face face) {
+        public Face putFace(Face face) {
             lock.readLock().lock();
             try {
                 faces.add(face);
             } finally {
                 lock.readLock().unlock();
             }
+            return face;
+        }
+
+        @Override
+        public boolean isOverlapChecking() {
+            return false;
         }
     }
 
@@ -217,17 +337,24 @@ public abstract class ConcurrentMeshBuilder {
             return Collections.unmodifiableCollection(faces.values());
         }
 
-        public void putFace(Face face, boolean override) {
+        public Face putFace(Face face, boolean override) {
             if (override) {
                 faces.put(new UnorderedArrayHandle<>(face.getVertices()), face);
+                return face;
             } else {
-                faces.putIfAbsent(new UnorderedArrayHandle<>(face.getVertices()), face);
+                Face prev = faces.putIfAbsent(new UnorderedArrayHandle<>(face.getVertices()), face);
+                return prev != null ? prev : face;
             }
         }
 
         @Override
-        public void putFace(Face face) {
-            putFace(face, prioritizeNewFaces);
+        public Face putFace(Face face) {
+            return putFace(face, prioritizeNewFaces);
+        }
+
+        @Override
+        public boolean isOverlapChecking() {
+            return true;
         }
     }
 }
