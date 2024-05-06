@@ -9,6 +9,10 @@ public record Vertex(Vector3 pos, Vector3 color) implements FloatTuple {
         this(pos, new Vector3(1, 1, 1));
     }
 
+    public Vertex(float x, float y, float z) {
+        this(new Vector3(x, y, z));
+    }
+
     @Override
     public float getX() {
         return pos.x();

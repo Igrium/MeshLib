@@ -10,7 +10,8 @@
             "request": "launch",
             "mainClass": "com.igrium.testapp.TestApp",
             "projectName": "testapp",
-            "console": "internalConsole"
+            "console": "internalConsole",
+            "cwd": "${workspaceFolder}/testapp"
         }
     ]
 }

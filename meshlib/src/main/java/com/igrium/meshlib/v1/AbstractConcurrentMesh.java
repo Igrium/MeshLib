@@ -1,4 +1,4 @@
-package com.igrium.meshlib;
+package com.igrium.meshlib.v1;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.igrium.meshlib.Vertex;
 import com.igrium.meshlib.math.Vector2;
 import com.igrium.meshlib.math.Vector3;
 import com.igrium.meshlib.util.IndexedSet;

@@ -1,10 +1,12 @@
-package com.igrium.meshlib;
+package com.igrium.meshlib.v1;
 
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+
+import com.igrium.meshlib.Vertex;
 
 /**
  * A concurrent mesh that ensures that you can't have two faces that share the
@@ -79,7 +81,7 @@ public class OverlapCheckingMesh extends AbstractConcurrentMesh {
         return Collections.unmodifiableCollection(faces.values());
     }
     
-    static boolean arrayEqualsUnordered(Object[] array1, Object[] array2) {
+    public static boolean arrayEqualsUnordered(Object[] array1, Object[] array2) {
         if (array1.length != array2.length)
             return false;
         

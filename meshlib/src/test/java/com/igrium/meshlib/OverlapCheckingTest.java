@@ -9,6 +9,8 @@ import java.util.stream.IntStream;
 
 import org.junit.jupiter.api.RepeatedTest;
 
+import com.igrium.meshlib.v1.OverlapCheckingMesh;
+
 public class OverlapCheckingTest {
 
     @RepeatedTest(5)

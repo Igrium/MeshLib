@@ -1,4 +1,4 @@
-package com.igrium.meshlib;
+package com.igrium.meshlib.v1;
 
 import java.util.Collection;
 import java.util.Collections;
