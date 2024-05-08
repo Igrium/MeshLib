@@ -1,13 +1,12 @@
 package com.igrium.meshlib;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
-import java.util.Objects;
 
 import com.igrium.meshlib.math.Vector2;
 import com.igrium.meshlib.math.Vector3;
-import com.igrium.meshlib.util.ArrayUtils;
 
 /**
  * A face within a concurrent mesh. This implementation is mutable. Although
@@ -125,38 +124,17 @@ public class Face implements Comparable<Face> {
 
     @Override
     public int compareTo(Face other) {
-        // if (Objects.equals(this.getMaterial(), other.getMaterial())) {
-        //     return ArrayUtils.hashCollectionUnordered(this.groups) - ArrayUtils.hashCollectionUnordered(other.groups);
-        // } else {
-        //     if (this.material == null) {
-        //         return Integer.MAX_VALUE;
-        //     } else if (other.material == null) {
-        //         return Integer.MIN_VALUE;
-        //     } else {
-        //         return this.material.compareTo(other.material);
-        //     }
-        // }
-        
-        if (Objects.equals(this.material, other.material)) {
-            return ArrayUtils.hashCollectionUnordered(this.groups) - ArrayUtils.hashCollectionUnordered(other.groups);
-        } else  if (this.material != null && other.material != null) {
-            return this.material.compareTo(other.material);
-        } else if (this.material == null) {
-            return 0xFF;
-        } else if (other.material == null) {
-            return -0xFF;
-        } else {
-            return ArrayUtils.hashCollectionUnordered(this.groups);
+        int val = 0;
+        if (this.material != null && other.material != null) {
+            val = this.material.compareTo(other.material) * 0xFFFF;
         }
 
-        // int face1MatHash = face1.getMaterial() != null ? face1.getMaterial().hashCode() : Integer.MIN_VALUE;
-        // int face2MatHash = face2.getMaterial() != null ? face2.getMaterial().hashCode() : Integer.MIN_VALUE;
-        // if (Objects.equals(face1.getMaterial(), face2.getMaterial())) {
-        //     return face1.hashGroups() - face2.hashGroups();
-        // } else {
-        //     return face1MatHash - face2MatHash;
-        // }
+        String[] thisGroups = this.groups.toArray(String[]::new);
+        Arrays.sort(thisGroups);
 
-        // return val;
+        String[] otherGroups = other.groups.toArray(String[]::new);
+        Arrays.sort(otherGroups);
+
+        return val + Arrays.compare(thisGroups, otherGroups);
     }
 }
