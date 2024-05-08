@@ -1,5 +1,6 @@
 package com.igrium.meshlib.util;
 
+import java.util.Collection;
 import java.util.Objects;
 
 public class ArrayUtils {
@@ -35,5 +36,18 @@ public class ArrayUtils {
         }
 
         return true;
+    }
+
+    /**
+     * Return a hash code for the objects in a collection, regardless of the order.
+     * @param collection Collection to hash.
+     * @return Hash code.
+     */
+    public static int hashCollectionUnordered(Collection<?> collection) {
+        int hash = 0;
+        for (Object val : collection) {
+            hash += val.hashCode();
+        }
+        return hash;
     }
 }

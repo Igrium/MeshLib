@@ -24,7 +24,7 @@ public class TestApp {
 
         for (int x = 0; x < 100; x++) {
             for (int y = 0; y < 100; y++) {
-                for (int z = 0; z < 10; z++) {
+                for (int z = 0; z < 100; z++) {
                     futures.add(makeFuture(mesh, x, y, z));
                 }
             }
@@ -35,7 +35,7 @@ public class TestApp {
         System.out.println("Built mesh in " + (System.currentTimeMillis() - startTime) + " ms");
         long compileStartTime = System.currentTimeMillis();
         
-        Obj obj = mesh.toObj();
+        Obj obj = mesh.toObj(true);
         System.out.println("Compiled mesh in " + (System.currentTimeMillis() - compileStartTime) + " ms");
         System.out.println("Total processing time: " + (System.currentTimeMillis() - startTime) + " ms");
 
@@ -43,7 +43,7 @@ public class TestApp {
             ObjWriter.write(obj, writer);
         }
 
-        System.out.print("wrote to file.obj");
+        System.out.print("wrote to " + Paths.get("file.obj").toAbsolutePath());
     }
 
     private static CompletableFuture<Void> makeFuture(ConcurrentMeshBuilder mesh, float x, float y, float z) {
@@ -72,7 +72,7 @@ public class TestApp {
             new Vertex(x, y, maxZ)
         };
 
-        new FaceBuilder(face1Verts).texCoords(sharedTexCoord).build(mesh);
+        new FaceBuilder(face1Verts).material("mat1").texCoords(sharedTexCoord).build(mesh);
 
         Vertex[] face2Verts = new Vertex[] {
             new Vertex(x, y, z),
@@ -81,7 +81,7 @@ public class TestApp {
             new Vertex(maxX, y, z)
         };
 
-        new FaceBuilder(face2Verts).texCoords(sharedTexCoord).build(mesh);
+        new FaceBuilder(face2Verts).material("mat2").texCoords(sharedTexCoord).build(mesh);
 
         Vertex[] face3Verts = new Vertex[] {
             new Vertex(x, y, z),
@@ -90,7 +90,7 @@ public class TestApp {
             new Vertex(x, maxY, z)
         };
 
-        new FaceBuilder(face3Verts).texCoords(sharedTexCoord).build(mesh);
+        new FaceBuilder(face3Verts).groups("group1").texCoords(sharedTexCoord).build(mesh);
 
         Vertex[] face4verts = new Vertex[] {
             new Vertex(maxX, y, z),
@@ -99,7 +99,7 @@ public class TestApp {
             new Vertex(maxX, y, maxZ)
         };
 
-        new FaceBuilder(face4verts).texCoords(sharedTexCoord).build(mesh);
+        new FaceBuilder(face4verts).material("mat2").groups("group1").texCoords(sharedTexCoord).build(mesh);
 
     //     float maxX = x + 1;
     //     float maxY = y + 1;

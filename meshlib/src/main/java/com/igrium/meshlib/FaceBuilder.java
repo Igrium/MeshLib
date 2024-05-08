@@ -144,7 +144,8 @@ public class FaceBuilder {
                 normalRefs[i] = normalMap.getOrAdd(normals[i]);
             }
         }
-
+        // Alphabetize groups to optimize file once faces are sorted.
+        groups.sort(String::compareTo);
         Face face = Face.create(vertRefs, texCoordRefs, normalRefs, material, groups);
         mesh.putFace(face);
         return face;

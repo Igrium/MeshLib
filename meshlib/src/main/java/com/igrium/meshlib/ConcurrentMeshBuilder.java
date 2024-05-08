@@ -1,5 +1,6 @@
 package com.igrium.meshlib;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
@@ -245,9 +246,12 @@ public abstract class ConcurrentMeshBuilder {
      * complexity of the mesh, this method could take quite some time. Additionally,
      * all other methods in the mesh builder will block until it returns.
      * 
+     * @param sort If true, faces will be sorted by their material and subsequently
+     *             their group.
+     * 
      * @return The compiled <code>Obj</code>
      */
-    public Obj toObj() {
+    public Obj toObj(boolean sort) {
         Obj obj = Objs.create();
         lock.writeLock().lock();
         try {
@@ -264,7 +268,15 @@ public abstract class ConcurrentMeshBuilder {
                 obj.addNormal(ref.value());
             }
 
-            for (Face face : getFaces()) {
+            Collection<Face> faces = getFaces();
+
+            if (sort) {
+                List<Face> sorted = new ArrayList<>(faces);
+                sorted.sort(Face::compareTo);
+                faces = sorted;
+            }
+
+            for (Face face : faces) {
                 obj.setActiveGroupNames(face.getGroups());
                 obj.setActiveMaterialGroupName(face.getMaterial());
 
@@ -302,6 +314,18 @@ public abstract class ConcurrentMeshBuilder {
         } finally {
             lock.writeLock().unlock();
         }
+    }
+    
+    
+    /**
+     * Compile this mesh builder into an <code>Obj</code>. Depending on the
+     * complexity of the mesh, this method could take quite some time. Additionally,
+     * all other methods in the mesh builder will block until it returns.
+     * 
+     * @return The compiled <code>Obj</code>
+     */
+    public Obj toObj() {
+        return toObj(false);
     }
 
     private static class SimpleConcurrentMeshBuilder extends ConcurrentMeshBuilder {
